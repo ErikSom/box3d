@@ -28,6 +28,20 @@
       "generator": "Xcode",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" },
       "binaryDir": "${sourceDir}/build"
+    },
+    {
+      "name": "web",
+      "displayName": "Web (Emscripten + WebGPU)",
+      "generator": "Unix Makefiles",
+      "binaryDir": "${sourceDir}/build-web",
+      "toolchainFile": "$env{EMSDK}/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "BOX3D_UNIT_TESTS": "OFF",
+        "BOX3D_BENCHMARKS": "OFF",
+        "BOX3D_BUILD_SHADERS": "ON",
+        "BOX3D_VALIDATE": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -36,6 +50,7 @@
     { "name": "linux-debug",     "configurePreset": "linux-debug" },
     { "name": "linux-release",   "configurePreset": "linux-release" },
     { "name": "macos-debug",     "configurePreset": "macos",       "configuration": "Debug" },
-    { "name": "macos-release",   "configurePreset": "macos",       "configuration": "Release" }
+    { "name": "macos-release",   "configurePreset": "macos",       "configuration": "Release" },
+    { "name": "web",             "configurePreset": "web" }
   ]
 }

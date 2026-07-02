@@ -100,12 +100,15 @@ static void OnInit( void )
 
 	SortSamples();
 
-	// A first run with no settings opens straight into the replay viewer.
+	// A first run with no settings opens straight into the replay viewer,
+	// except on the web where recordings cannot be opened.
 	int index = s_context.sampleIndex;
+#ifndef __EMSCRIPTEN__
 	if ( s_context.newUser && g_replayIndex >= 0 )
 	{
 		index = g_replayIndex;
 	}
+#endif
 
 	// --sample N selects a registered sample by sorted index, overriding the
 	// persisted one. Lets a headless --frames run target a specific sample.
@@ -309,6 +312,25 @@ static void OnEvent( const sapp_event* e )
 	}
 }
 
+#ifdef __EMSCRIPTEN__
+// The browser drives OnFrame at display refresh and sleeping would block the
+// main thread, so pace to 60 Hz by skipping frames instead.
+static bool WebFramePacer( void )
+{
+	const double targetMs = 1000.0 / 60.0;
+	static double accumulatorMs = 0.0;
+
+	accumulatorMs += sapp_frame_duration() * 1000.0;
+	if ( accumulatorMs < targetMs )
+	{
+		return false;
+	}
+
+	// cap the carry-over so a hitch doesn't cause a catch-up burst
+	accumulatorMs = b3MinFloat( (float)( accumulatorMs - targetMs ), (float)targetMs );
+	return true;
+}
+#else
 // Pace the loop to 60 Hz so the fixed 1/60 physics step plays at real time on any
 // display. Sleep the bulk of the idle time, then spin the last bit since sleep wakes
 // are only accurate to about a millisecond.
@@ -328,6 +350,7 @@ static void LimitFrameRate( uint64_t frameStart )
 		b3Yield();
 	}
 }
+#endif
 
 static void OnFrame( void )
 {
@@ -337,17 +360,26 @@ static void OnFrame( void )
 		return;
 	}
 
-	const uint64_t frameStart = b3GetTicks();
+#ifdef __EMSCRIPTEN__
+	if ( s_frameLimit < 0 && WebFramePacer() == false )
+	{
+		return;
+	}
+#endif
+
+	[[maybe_unused]] const uint64_t frameStart = b3GetTicks();
 
 	// Nothing to draw while minimized. sapp reports a 0x0 framebuffer then, which
 	// would drive the swapchain and every render target to zero size. Pace the
 	// loop so it doesn't spin and bail.
 	if ( s_context.minimized )
 	{
+#ifndef __EMSCRIPTEN__
 		if ( s_frameLimit < 0 )
 		{
 			LimitFrameRate( frameStart );
 		}
+#endif
 		return;
 	}
 
@@ -425,10 +457,12 @@ static void OnFrame( void )
 	sg_commit();
 	++s_frame;
 
+#ifndef __EMSCRIPTEN__
 	if ( s_frameLimit < 0 )
 	{
 		LimitFrameRate( frameStart );
 	}
+#endif
 }
 
 static void OnCleanup( void )

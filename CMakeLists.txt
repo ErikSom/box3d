@@ -107,6 +107,13 @@ endif()
 
 include(FetchContent)
 
+# Emscripten needs -pthread on compile and link of every target, including box3d
+if(EMSCRIPTEN)
+	string(APPEND CMAKE_C_FLAGS " -pthread")
+	string(APPEND CMAKE_CXX_FLAGS " -pthread")
+	string(APPEND CMAKE_EXE_LINKER_FLAGS " -pthread")
+endif()
+
 add_subdirectory(src)
 
 # This hides samples, test, and doxygen from apps that use box3d via FetchContent
@@ -123,16 +130,6 @@ if(PROJECT_IS_TOP_LEVEL)
 	option(BOX3D_BUILD_SHADERS "Recompile shaders with sokol-shdc" OFF)
 
 	if(BOX3D_UNIT_TESTS OR BOX3D_SAMPLES OR BOX3D_BENCHMARKS)
-
-		# Emscripten pthread support
-		if(EMSCRIPTEN)
-			set(EMSCRIPTEN_PTHREADS_COMPILER_FLAGS "-pthread -s USE_PTHREADS=1")
-			set(EMSCRIPTEN_PTHREADS_LINKER_FLAGS "${EMSCRIPTEN_PTHREADS_COMPILER_FLAGS} -s ALLOW_MEMORY_GROWTH")
-			string(APPEND CMAKE_C_FLAGS " ${EMSCRIPTEN_PTHREADS_COMPILER_FLAGS}")
-			string(APPEND CMAKE_CXX_FLAGS " ${EMSCRIPTEN_PTHREADS_COMPILER_FLAGS}")
-			string(APPEND CMAKE_EXE_LINKER_FLAGS " ${EMSCRIPTEN_PTHREADS_LINKER_FLAGS}")
-		endif()
-
 		add_subdirectory(shared)
 	endif()
 

@@ -395,18 +395,20 @@ struct IndexPair
 	int index2;
 };
 
+// 16 bits per index so the pair fits a pointer on 32-bit targets
 static inline IndexPair ConvertToPair( void* userData )
 {
-	static_assert( sizeof( intptr_t ) >= 8 && sizeof( int ) == 4 );
-	intptr_t value = (intptr_t)userData;
-	int index1 = (int)value;
-	int index2 = (int)( value >> 32 );
+	uintptr_t value = (uintptr_t)userData;
+	int index1 = (int)( value & 0xFFFF );
+	int index2 = (int)( ( value >> 16 ) & 0xFFFF );
 	return { index1, index2 };
 }
 
 static inline void* ConvertToUserData( IndexPair pair )
 {
-	intptr_t value = (intptr_t)pair.index2 << 32 | (intptr_t)pair.index1;
+	B3_ASSERT( 0 <= pair.index1 && pair.index1 < 0x10000 );
+	B3_ASSERT( 0 <= pair.index2 && pair.index2 < 0x10000 );
+	uintptr_t value = ( (uintptr_t)pair.index2 << 16 ) | (uintptr_t)pair.index1;
 	return (void*)value;
 }
 
