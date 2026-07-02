@@ -7,8 +7,18 @@
 # them in place when a .glsl changes; off builds straight from the committed
 # headers and fetches no tooling.
 
-set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated"
-    CACHE INTERNAL "Directory holding generated shader headers")
+# The web build generates WGSL into the build tree instead of using the
+# committed headers, so it always needs sokol-shdc.
+if(EMSCRIPTEN)
+    if(NOT BOX3D_BUILD_SHADERS)
+        message(FATAL_ERROR "The web build requires BOX3D_BUILD_SHADERS=ON (the web preset sets it).")
+    endif()
+    set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated"
+        CACHE INTERNAL "Directory holding generated shader headers")
+else()
+    set(SHADER_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated"
+        CACHE INTERNAL "Directory holding generated shader headers")
+endif()
 
 if(BOX3D_BUILD_SHADERS)
     if(NOT SOKOL_SHDC_EXECUTABLE OR NOT EXISTS "${SOKOL_SHDC_EXECUTABLE}")
@@ -35,8 +45,12 @@ endif()
 set_property(GLOBAL PROPERTY SHADER_OUTPUTS "")
 set_property(GLOBAL PROPERTY SHADER_INPUTS  "")
 
-# Backends: hlsl5 (D3D11), metal_macos (Metal), glsl430 (GL 4.5).
-set(SHADER_LANGUAGES "hlsl5:metal_macos:glsl430")
+# Backends: hlsl5 (D3D11), metal_macos (Metal), glsl430 (GL 4.5), wgsl (WebGPU).
+if(EMSCRIPTEN)
+    set(SHADER_LANGUAGES "wgsl")
+else()
+    set(SHADER_LANGUAGES "hlsl5:metal_macos:glsl430")
+endif()
 
 # Registers a custom_command per .glsl input so only changed shaders re-run
 # sokol-shdc on incremental builds. Skipped when BOX3D_BUILD_SHADERS is off -

@@ -106,13 +106,14 @@ else()
     message(FATAL_ERROR "Unsupported platform for sokol backend selection.")
 endif()
 
-# sokol-shdc executable path, consumed by shaders/CMakeLists.txt.
+# sokol-shdc executable path, consumed by shaders/CMakeLists.txt. shdc runs on
+# the build machine, so pick by host system (WIN32/APPLE are wrong when cross-compiling).
 if(BOX3D_BUILD_SHADERS)
-    if(WIN32)
+    if(CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
         set(_shdc_subdir win32)
         set(_shdc_exe    sokol-shdc.exe)
-    elseif(APPLE)
-        if(CMAKE_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
+    elseif(CMAKE_HOST_SYSTEM_NAME STREQUAL "Darwin")
+        if(CMAKE_HOST_SYSTEM_PROCESSOR MATCHES "arm64|aarch64")
             set(_shdc_subdir osx_arm64)
         else()
             set(_shdc_subdir osx)
