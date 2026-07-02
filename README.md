@@ -68,6 +68,18 @@ Run the samples app (must be in the Box3D directory).
 - Linux: `./build/bin/samples`
 - macOS: `./build/bin/Release/samples`
 
+## Building for the web
+
+The samples run in the browser using WebGPU, with multithreading via web workers.
+
+- Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html)
+- Run `./build_wasm.sh` (or `cmake --preset web` then `cmake --build --preset web`)
+- Run `emrun build-web/bin/samples.html`
+
+Threading needs SharedArrayBuffer, so the server must send COOP/COEP headers.
+emrun does; a plain file server will not work. The browser needs WebGPU (current
+Chrome, Edge, Safari, or Firefox).
+
 ## Building for Visual Studio
 
 - Install [Visual Studio](https://visualstudio.microsoft.com/)

@@ -1,4 +1,5 @@
 build/
+build-web/
 imgui.ini
 settings.ini
 .vscode/

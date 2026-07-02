@@ -26,7 +26,9 @@
 
 #include <ctype.h>
 #include <filesystem>
+#ifndef __EMSCRIPTEN__
 #include <nfd.h>
+#endif
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -1343,6 +1345,10 @@ void SelectSample( SampleContext* context, int selection, bool restart )
 
 void OpenReplayFileDialog( SampleContext* context )
 {
+#ifdef __EMSCRIPTEN__
+	// no file dialogs in the browser
+	(void)context;
+#else
 	if ( g_replayIndex < 0 )
 	{
 		return;
@@ -1362,6 +1368,7 @@ void OpenReplayFileDialog( SampleContext* context )
 		SelectSample( context, g_replayIndex, false );
 	}
 	NFD_Quit();
+#endif
 }
 
 // Subsequence fuzzy match. Returns a score (higher is better) or -1 if the
@@ -1693,6 +1700,7 @@ static void DrawMenuBar( SampleContext* context )
 
 		// Only present once the replay viewer is registered. Open pops a native picker, then hands
 		// the chosen file to the viewer through replayFile.
+#ifndef __EMSCRIPTEN__
 		if ( g_replayIndex >= 0 && ImGui::BeginMenu( "Replay" ) )
 		{
 			if ( ImGui::MenuItem( "Open..." ) )
@@ -1705,6 +1713,7 @@ static void DrawMenuBar( SampleContext* context )
 			}
 			ImGui::EndMenu();
 		}
+#endif
 
 		static bool showAbout = false;
 		if ( ImGui::BeginMenu( "Help" ) )
@@ -1939,9 +1948,15 @@ static void DrawInfoPanel( SampleContext* context )
 		ImGui::SliderInt( "Sub-steps##Solver", &context->subStepCount, 1, 50 );
 		ImGui::SliderFloat( "Hertz##Solver", &context->hertz, 5.0f, 240.0f, "%.0f hz" );
 
-		if ( ImGui::SliderInt( "Workers##Solver", &context->workerCount, 1, B3_MAX_WORKERS ) )
+		// the web build has a fixed pthread pool, see samples/CMakeLists.txt
+#ifdef __EMSCRIPTEN__
+		constexpr int maxWorkers = B3_WEB_MAX_WORKERS;
+#else
+		constexpr int maxWorkers = B3_MAX_WORKERS;
+#endif
+		if ( ImGui::SliderInt( "Workers##Solver", &context->workerCount, 1, maxWorkers ) )
 		{
-			context->workerCount = b3ClampInt( context->workerCount, 1, B3_MAX_WORKERS );
+			context->workerCount = b3ClampInt( context->workerCount, 1, maxWorkers );
 			SelectSample( context, context->sampleIndex, true );
 		}
 

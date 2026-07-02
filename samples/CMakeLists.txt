@@ -16,16 +16,19 @@ FetchContent_Declare(implot
 )
 FetchContent_MakeAvailable(implot)
 
-# nativefiledialog-extended for the Replay open dialog. Native OS file picker, target nfd.
-set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
-FetchContent_Declare(nfd
-    GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended.git
-    GIT_TAG        v1.3.0
-    GIT_SHALLOW    TRUE
-    GIT_PROGRESS   TRUE
-)
-FetchContent_MakeAvailable(nfd)
+# nativefiledialog-extended for the Replay open dialog. Native OS file picker,
+# target nfd. Not available in the browser.
+if(NOT EMSCRIPTEN)
+    set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
+    FetchContent_Declare(nfd
+        GIT_REPOSITORY https://github.com/btzy/nativefiledialog-extended.git
+        GIT_TAG        v1.3.0
+        GIT_SHALLOW    TRUE
+        GIT_PROGRESS   TRUE
+    )
+    FetchContent_MakeAvailable(nfd)
+endif()
 
 # The shader compiler is only needed when recompiling shaders. A fresh clone
 # with BOX3D_BUILD_SHADERS=OFF builds from the committed headers and skips this.
@@ -90,6 +93,11 @@ elseif(APPLE)
         "-framework QuartzCore"
         "-framework Metal"
         "-framework MetalKit")
+elseif(EMSCRIPTEN)
+    # must precede elseif(UNIX) because Emscripten sets UNIX=1
+    target_compile_definitions(sokol INTERFACE SOKOL_WGPU)
+    target_compile_options(sokol INTERFACE "--use-port=emdawnwebgpu")
+    target_link_options(sokol INTERFACE "--use-port=emdawnwebgpu")
 elseif(UNIX)
     target_compile_definitions(sokol INTERFACE SOKOL_GLCORE)
     find_package(OpenGL REQUIRED)
@@ -193,12 +201,36 @@ target_include_directories(samples PRIVATE
 
 # gfx: the renderer + Draw*/adapter. shared: human, utils (Random*), the
 # benchmark/determinism helpers the samples lean on.
-target_link_libraries(samples PRIVATE gfx shared imgui implot sokol nfd)
+target_link_libraries(samples PRIVATE gfx shared imgui implot sokol)
+if(NOT EMSCRIPTEN)
+    target_link_libraries(samples PRIVATE nfd)
+endif()
 
 set_target_properties(samples PROPERTIES
     CXX_STANDARD 20
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
 )
+
+if(EMSCRIPTEN)
+    set_target_properties(samples PROPERTIES SUFFIX ".html")
+
+    # The pthread pool must cover two worlds (base + replay viewer) at
+    # B3_WEB_MAX_WORKERS each, otherwise world creation deadlocks.
+    target_compile_definitions(samples PRIVATE B3_WEB_MAX_WORKERS=8)
+    target_link_options(samples PRIVATE
+        "-sENVIRONMENT=web,worker"
+        "-sPTHREAD_POOL_SIZE=16"
+        "-sPTHREAD_POOL_SIZE_STRICT=2"
+        "-sSTACK_SIZE=2097152"
+        "-sDEFAULT_PTHREAD_STACK_SIZE=1048576"
+        # fixed-size heap: growable shared memory is rejected by WebGPU setBindGroup
+        "-sINITIAL_MEMORY=536870912"
+        "--preload-file=${CMAKE_SOURCE_DIR}/data@data"
+        "--shell-file=${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html"
+    )
+    set_property(TARGET samples APPEND PROPERTY LINK_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/web/shell.html")
+endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${SAMPLE_FILES})
